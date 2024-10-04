@@ -1,0 +1,39 @@
+# Build Folders
+bin/
+obj/
+
+# Visual Studio files
+.vs/
+*.user
+*.suo
+*.sln.ide
+
+# Visual Studio Code files
+.vscode/
+*.code-workspace
+
+# User-specific files
+*.userprefs
+
+# Rider files
+.idea/
+*.sln.iml
+
+# Dotnet files
+project.lock.json
+project.fragment.lock.json
+*.nupkg
+
+# Publish folder
+publish/
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.temp
+
+# Ignore local development environment files
+# appsettings.Development.json
+# appsettings.*.json

@@ -2,6 +2,7 @@ using AgileActors.AggregationApp.Interfaces;
 using AgileActors.AggregationApp.Types.Context;
 using AgileActors.AggregationApp.Types.DTOs;
 using AgileActors.AggregationApp.Types.Models.NewsData;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 
@@ -11,11 +12,13 @@ namespace AgileActors.AggregationApp.Implementation
     {
         private readonly IOptions<AppSettings> _appSettings;
         private readonly IHttpClientFactory _httpClientFactory;
+        private readonly IMemoryCache _cache;
 
-        public DataAggregationService(IOptions<AppSettings> appSettings, IHttpClientFactory httpClientFactory)
+        public DataAggregationService(IOptions<AppSettings> appSettings, IHttpClientFactory httpClientFactory, IMemoryCache memoryCache)
         {
             _appSettings = appSettings;
             _httpClientFactory = httpClientFactory;
+            _cache = memoryCache;
         }
 
         #region Public Methods
@@ -33,36 +36,16 @@ namespace AgileActors.AggregationApp.Implementation
                 var baseUrl = api.BaseUrl;
                 var headers = api.Headers;
 
-                using (var httpClient = _httpClientFactory.CreateClient())
+                if (_cache.TryGetValue(sourceName, out DataModel cachedData))
                 {
-                    try
+                    lock (result)
                     {
-                        AdjustHeaders(headers, httpClient);
-                        baseUrl = AdjustBaseUrl(headers, baseUrl);
-                        var response = await httpClient.GetAsync(baseUrl);
-                        response.EnsureSuccessStatusCode();
-
-                        string? curData = await response.Content.ReadAsStringAsync();
-                        if (!string.IsNullOrEmpty(curData))
-                        {
-                            lock (result)
-                            {
-                                result.Data.Add(new DataModel
-                                {
-                                    SourceName = sourceName,
-                                    Data = curData
-                                });
-                            }
-                        }
+                        result.Data.Add(cachedData);
                     }
-                    catch (Exception ex)
-                    {
-                        lock (result)
-                        {
-                            result.Errors.Add(new Exception($"Unexpected error from {sourceName}: {ex?.Message}"));
-                        }
-                    }
+                    return;
                 }
+
+                await GetAllAggregatedDataAsync_Helper(result, headers, baseUrl, sourceName);
             });
 
             await Task.WhenAll(tasks);
@@ -105,6 +88,43 @@ namespace AgileActors.AggregationApp.Implementation
         #endregion
 
         #region Private Methods
+        private async Task GetAllAggregatedDataAsync_Helper(AggregatedData result, ExternalApisHeaders headers, string baseUrl, string sourceName)
+        {
+            using (var httpClient = _httpClientFactory.CreateClient())
+            {
+                try
+                {
+                    AdjustHeaders(headers, httpClient);
+                    baseUrl = AdjustBaseUrl(headers, baseUrl);
+                    var response = await httpClient.GetAsync(baseUrl);
+                    response.EnsureSuccessStatusCode();
+
+                    string? curData = await response.Content.ReadAsStringAsync();
+                    if (!string.IsNullOrEmpty(curData))
+                    {
+                        var dataModel = new DataModel
+                        {
+                            SourceName = sourceName,
+                            Data = curData
+                        };
+
+                        _cache.Set(sourceName, dataModel, TimeSpan.FromMinutes(10));
+
+                        lock (result)
+                        {
+                            result.Data.Add(dataModel);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    lock (result)
+                    {
+                        result.Errors.Add(new Exception($"Unexpected error from {sourceName}: {ex?.Message}"));
+                    }
+                }
+            }
+        }
         private void AdjustHeaders(ExternalApisHeaders headers, HttpClient? httpClient)
         {
             if (httpClient == null || headers == null) return;

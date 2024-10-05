@@ -47,6 +47,9 @@ namespace Portfolio.Core
                             opts.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
                         });
 
+                        // Adding IMemoryCache as Caching Service
+                        services.AddMemoryCache();
+
                         // Register Http Clients,
                         services.RegisterHttpClients(config);
 

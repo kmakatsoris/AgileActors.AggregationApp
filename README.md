@@ -92,15 +92,11 @@ Your task is to develop an API aggregation service that consolidates data from m
 
 ## 📸 Screenshots
 
-![Sample 1](![Screenshot from 2024-10-05 22-02-22](https://github.com/user-attachments/assets/e62156b7-24fb-4c50-bde3-097484c2b014)) 
-![Sample 2](![Screenshot from 2024-10-05 22-02-30](https://github.com/user-attachments/assets/dbf96d1e-aa77-4c86-ada3-83032ab6dd27)
-)
-![Sample 3](![Screenshot from 2024-10-05 22-15-06](https://github.com/user-attachments/assets/f159954a-6560-47a7-a3fd-a689fbb08c07)
-)
-![Sample 4](![Screenshot from 2024-10-05 22-47-36](https://github.com/user-attachments/assets/fae0d502-02b6-4480-ab89-3f8bbbb41c09)
-)
-![Sample 5](![Screenshot from 2024-10-05 22-47-51](https://github.com/user-attachments/assets/ca5f98c3-141d-4672-8058-1ad6b5c11a53)
-)
+![Screenshot from 2024-10-05 22-02-22](https://github.com/user-attachments/assets/e62156b7-24fb-4c50-bde3-097484c2b014)
+![Screenshot from 2024-10-05 22-02-30](https://github.com/user-attachments/assets/dbf96d1e-aa77-4c86-ada3-83032ab6dd27)
+![Screenshot from 2024-10-05 22-15-06](https://github.com/user-attachments/assets/f159954a-6560-47a7-a3fd-a689fbb08c07)
+![Screenshot from 2024-10-05 22-47-36](https://github.com/user-attachments/assets/fae0d502-02b6-4480-ab89-3f8bbbb41c09)
+![Screenshot from 2024-10-05 22-47-51](https://github.com/user-attachments/assets/ca5f98c3-141d-4672-8058-1ad6b5c11a53)
 
 ## 🤝 Contributing
 

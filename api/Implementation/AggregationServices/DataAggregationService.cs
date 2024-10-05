@@ -23,9 +23,11 @@ namespace AgileActors.AggregationApp.Implementation
         {
             AggregatedData result = new AggregatedData();
             List<ExternalApis>? listOfExternalApis = _appSettings?.Value?.ExternalApiSettings?.ExternalApiSettingsList;
-            if (listOfExternalApis == null || listOfExternalApis?.Count() <= 0 || listOfExternalApis?.Any(l => l == null) == true) return result;
 
-            foreach (var api in listOfExternalApis)
+            if (listOfExternalApis == null || listOfExternalApis.Count == 0 || listOfExternalApis.Any(l => l == null))
+                return result;
+
+            var tasks = listOfExternalApis.Select(async api =>
             {
                 var sourceName = api.SourceName;
                 var baseUrl = api.BaseUrl;
@@ -39,19 +41,31 @@ namespace AgileActors.AggregationApp.Implementation
                         baseUrl = AdjustBaseUrl(headers, baseUrl);
                         var response = await httpClient.GetAsync(baseUrl);
                         response.EnsureSuccessStatusCode();
+
                         string? curData = await response.Content.ReadAsStringAsync();
-                        if (!string.IsNullOrEmpty(curData)) result.Data.Add(new DataModel
+                        if (!string.IsNullOrEmpty(curData))
                         {
-                            SourceName = sourceName,
-                            Data = curData
-                        });
+                            lock (result)
+                            {
+                                result.Data.Add(new DataModel
+                                {
+                                    SourceName = sourceName,
+                                    Data = curData
+                                });
+                            }
+                        }
                     }
                     catch (Exception ex)
                     {
-                        result.Errors.Add(new Exception($"Unexpected error from {sourceName}: {ex?.Message}"));
+                        lock (result)
+                        {
+                            result.Errors.Add(new Exception($"Unexpected error from {sourceName}: {ex?.Message}"));
+                        }
                     }
                 }
-            }
+            });
+
+            await Task.WhenAll(tasks);
 
             return result;
         }

@@ -1,21 +1,13 @@
 using AgileActors.AggregationApp.Types.Context;
 using Microsoft.Extensions.Options;
-using System.Linq;
 
 namespace AgileActors.AggregationApp.Utils.AppSettingsUtilsService
 {
-    public class AppSettingsUtilsService
+    public static class AppSettingsUtilsService
     {
-        private readonly IOptions<AppSettings> _appSettings;
-
-        public AppSettingsUtilsService(IOptions<AppSettings> appSettings)
+        public static ExternalApis GetExternalApisBySourceName(this IOptions<AppSettings> appSettings, string sourceName)
         {
-            _appSettings = appSettings;
-        }
-
-        public ExternalApis GetExternalApisBySourceName(string sourceName)
-        {
-            var externalApi = _appSettings?.Value?.ExternalApiSettings?.ExternalApiSettingsList
+            var externalApi = appSettings?.Value?.ExternalApiSettings?.ExternalApiSettingsList
                 ?.FirstOrDefault(api => api.SourceName == sourceName);
 
             if (externalApi == null)

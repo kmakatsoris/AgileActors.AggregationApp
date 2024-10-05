@@ -38,8 +38,21 @@ namespace AgileActors.AggregationApp.Types.Context
         [DataMember(Name = "BaseUrl")]
         public string BaseUrl { get; set; } = "";
 
+        [DataMember(Name = "Headers")]
+        public ExternalApisHeaders Headers { get; set; } = new ExternalApisHeaders();
+    }
+
+    [DataContract]
+    public class ExternalApisHeaders
+    {
+        [DataMember(Name = "Authorization")]
+        public string Authorization { get; set; } = "";
+
         [DataMember(Name = "ApiKey")]
         public string ApiKey { get; set; } = "";
+
+        [DataMember(Name = "Accept")]
+        public string Accept { get; set; } = "";
     }
 
 }

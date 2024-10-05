@@ -13,6 +13,8 @@ using JsonSerializer = System.Text.Json.JsonSerializer;
 using System.Net.Http.Headers;
 using NLog.Extensions.Logging;
 using AgileActors.AggregationApp.Types.Context;
+using AgileActors.AggregationApp.Interfaces;
+using AgileActors.AggregationApp.Implementation;
 
 namespace Portfolio.Core
 {
@@ -162,13 +164,14 @@ namespace Portfolio.Core
             // --------------------------------------------------------------------
             services.AddSingleton<ILogger, Logger>(x => logger);
 
+
             // Scoped Lifecycle:
             // --------------------------------------------------------------------
 
 
             // Transient Lifecycle:
             // --------------------------------------------------------------------
-
+            services.AddTransient<IDataAggregationService, DataAggregationService>();
         }
         #endregion
 

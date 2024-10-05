@@ -1,37 +1,120 @@
+using AgileActors.AggregationApp.Interfaces;
 using AgileActors.AggregationApp.Types.Context;
 using AgileActors.AggregationApp.Types.DTOs;
+using AgileActors.AggregationApp.Types.Models.NewsData;
 using Microsoft.Extensions.Options;
+using Newtonsoft.Json;
 
-namespace AgileActors.AggregationApp.Implementation.AggregationServices
+namespace AgileActors.AggregationApp.Implementation
 {
-    public class DataAggregationService
+    public class DataAggregationService : IDataAggregationService
     {
         private readonly IOptions<AppSettings> _appSettings;
+        private readonly IHttpClientFactory _httpClientFactory;
 
-        public DataAggregationService(IOptions<AppSettings> appSettings)
+        public DataAggregationService(IOptions<AppSettings> appSettings, IHttpClientFactory httpClientFactory)
         {
             _appSettings = appSettings;
+            _httpClientFactory = httpClientFactory;
         }
 
+        #region Public Methods
         public async Task<AggregatedData> GetAllAggregatedDataAsync()
         {
             AggregatedData result = new AggregatedData();
             List<ExternalApis>? listOfExternalApis = _appSettings?.Value?.ExternalApiSettings?.ExternalApiSettingsList;
-            if (listOfExternalApis == null || listOfExternalApis?.Count() > 0 || listOfExternalApis?.Any(l => l == null) == true) return result;
+            if (listOfExternalApis == null || listOfExternalApis?.Count() <= 0 || listOfExternalApis?.Any(l => l == null) == true) return result;
+
             foreach (var api in listOfExternalApis)
             {
                 var sourceName = api.SourceName;
                 var baseUrl = api.BaseUrl;
-                var apiKey = api.ApiKey;
+                var headers = api.Headers;
 
-                // Make an API call based on the configuration
-
-                // Aggregate the data as needed                
+                using (var httpClient = _httpClientFactory.CreateClient())
+                {
+                    try
+                    {
+                        AdjustHeaders(headers, httpClient);
+                        baseUrl = AdjustBaseUrl(headers, baseUrl);
+                        var response = await httpClient.GetAsync(baseUrl);
+                        response.EnsureSuccessStatusCode();
+                        string? curData = await response.Content.ReadAsStringAsync();
+                        if (!string.IsNullOrEmpty(curData)) result.Data.Add(new DataModel
+                        {
+                            SourceName = sourceName,
+                            Data = curData
+                        });
+                    }
+                    catch (Exception ex)
+                    {
+                        result.Errors.Add(new Exception($"Unexpected error from {sourceName}: {ex?.Message}"));
+                    }
+                }
             }
 
-            // Return aggregated data
             return result;
         }
-    }
 
+        public async Task<AggregatedData> GetAllAggregatedData_Filtered_Async(string sourceName, string author, DateTime? publishedAfter)
+        {
+            if (string.IsNullOrEmpty(sourceName)) sourceName = "News";
+            if (string.IsNullOrEmpty(author)) author = "Karla";
+            if (publishedAfter == null) publishedAfter = DateTime.Now.AddDays(-7);
+
+            AggregatedData result = await GetAllAggregatedDataAsync();
+            try
+            {
+                // ***************************************************** ***************************************************** ***************************************************** 
+                // Because we get response from different sources and not all of them can be usefull, for educational purposes, to be filtered -> We will perform filtering on the News data [#Education_Reasons :)].
+                // ***************************************************** ***************************************************** ***************************************************** 
+                var tmpData = result?.Data?.FirstOrDefault(d => d?.SourceName?.Equals(sourceName) == true)?.Data;
+                if (string.IsNullOrEmpty(tmpData)) return result;
+                var newsData = JsonConvert.DeserializeObject<NewsData>(tmpData);
+                var filteredArticles = FilterArticles(newsData?.Articles, author, publishedAfter);
+                AggregatedData newResult = result;
+                foreach (var r in newResult?.Data)
+                {
+                    if (r != null && r?.SourceName?.Equals(sourceName) == true)
+                    {
+                        r.Data = JsonConvert.SerializeObject(filteredArticles);
+                    }
+                }
+                return newResult;
+            }
+            catch (Exception ex)
+            {
+                result.Errors.Add(new Exception($"Unexpected error during filtering procedure: {ex?.Message}"));
+            }
+            return result;
+        }
+        #endregion
+
+        #region Private Methods
+        private void AdjustHeaders(ExternalApisHeaders headers, HttpClient? httpClient)
+        {
+            if (httpClient == null || headers == null) return;
+            if (!string.IsNullOrEmpty(headers?.Authorization)) httpClient.DefaultRequestHeaders.Add("Authorization", headers?.Authorization);
+            if (!string.IsNullOrEmpty(headers?.Accept)) httpClient.DefaultRequestHeaders.Add("Accept", headers?.Accept);
+        }
+
+        private string AdjustBaseUrl(ExternalApisHeaders headers, string baseUrl)
+        {
+            if (string.IsNullOrEmpty(baseUrl) || headers == null) return "";
+            return baseUrl.Replace("{ApiKey}", headers?.ApiKey);
+        }
+
+        public static List<Article> FilterArticles(List<Article> articles, string author, DateTime? publishedAfter = null)
+        {
+            if (articles == null || articles.Count == 0) return new List<Article>();
+
+            return articles
+                .Where(article =>
+                    (author == null || (article?.Author != null && article.Author.Contains(author, StringComparison.OrdinalIgnoreCase))) &&
+                    (!publishedAfter.HasValue || article.PublishedAt >= publishedAfter.Value))
+                .ToList();
+        }
+
+        #endregion
+    }
 }

@@ -22,7 +22,7 @@ namespace AgileActors.AggregationApp.Implementation
         }
 
         #region Public Methods
-        public async Task<AggregatedData> GetAllAggregatedDataAsync()
+        public async Task<AggregatedData> GetAllAggregatedDataAsync(ExternalApis? externalApis = null)
         {
             AggregatedData result = new AggregatedData();
             List<ExternalApis>? listOfExternalApis = _appSettings?.Value?.ExternalApiSettings?.ExternalApiSettingsList;
@@ -32,11 +32,10 @@ namespace AgileActors.AggregationApp.Implementation
 
             var tasks = listOfExternalApis.Select(async api =>
             {
-                var sourceName = api.SourceName;
-                var baseUrl = api.BaseUrl;
-                var headers = api.Headers;
 
-                if (_cache.TryGetValue(sourceName, out DataModel cachedData))
+                ExternalApis extApi = InitParams(externalApis, api);
+
+                if (_cache.TryGetValue(extApi.SourceName, out DataModel cachedData))
                 {
                     lock (result)
                     {
@@ -45,7 +44,7 @@ namespace AgileActors.AggregationApp.Implementation
                     return;
                 }
 
-                await GetAllAggregatedDataAsync_Helper(result, headers, baseUrl, sourceName);
+                await GetAllAggregatedDataAsync_Helper(result, extApi.Headers, extApi.BaseUrl, extApi.SourceName);
             });
 
             await Task.WhenAll(tasks);
@@ -88,6 +87,23 @@ namespace AgileActors.AggregationApp.Implementation
         #endregion
 
         #region Private Methods
+        private ExternalApis InitParams(ExternalApis? externalApis, ExternalApis api)
+        {
+            ExternalApis result = new ExternalApis();
+            if (externalApis != null)
+            {
+                result.SourceName = externalApis?.SourceName ?? "";
+                result.BaseUrl = externalApis?.BaseUrl ?? "";
+                result.Headers = externalApis?.Headers ?? new ExternalApisHeaders();
+            }
+            else
+            {
+                result.SourceName = api.SourceName;
+                result.BaseUrl = api.BaseUrl;
+                result.Headers = api.Headers;
+            }
+            return result;
+        }
         private async Task GetAllAggregatedDataAsync_Helper(AggregatedData result, ExternalApisHeaders headers, string baseUrl, string sourceName)
         {
             using (var httpClient = _httpClientFactory.CreateClient())
